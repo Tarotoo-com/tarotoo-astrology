@@ -1,0 +1,25 @@
+# systemd unit for the Tarotoo astrology service.
+# Install: copy to /etc/systemd/system/, then
+#   systemctl daemon-reload && systemctl enable --now tarotoo-astrology
+[Unit]
+Description=Tarotoo astrology service (birth charts)
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/tarotoo-astrology
+Environment=ALLOWED_ORIGINS=https://tarotoo.com
+Environment=LIBEPHEMERIS_IERS_AUTO_DOWNLOAD=false
+Environment=LIBEPHEMERIS_LOG_LEVEL=ERROR
+ExecStart=/var/www/tarotoo-astrology/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8781 --workers 2 --no-server-header
+Restart=always
+RestartSec=3
+# The service holds no state and needs no write access.
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
