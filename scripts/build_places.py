@@ -9,9 +9,16 @@ Data: GeoNames, CC BY 4.0, https://download.geonames.org/export/dump/
 from __future__ import annotations
 
 import sys
+import unicodedata
 from pathlib import Path
 
 OUT = Path(__file__).resolve().parent.parent / "data" / "places.tsv"
+
+
+def fold(text: str) -> str:
+    """Strip accents and lower-case, as app.places.fold does."""
+    normalized = unicodedata.normalize("NFKD", text)
+    return "".join(c for c in normalized if not unicodedata.combining(c)).casefold()
 MAX_ALTERNATES = 12
 
 
@@ -36,8 +43,10 @@ def main() -> None:
         if not timezone:
             skipped += 1  # a chart needs the historical time zone; never guess one
             continue
-        # Keep only short Latin-script alternates: enough for typing in another language.
-        alts = [a for a in alternates.split(",") if a and len(a) <= 40 and a.isascii() and a.lower() not in (name.lower(), ascii_name.lower())]
+        # Keep short Latin-script alternates (accented ones included, so "München" is
+        # found for "Munich"); other scripts are left out to keep the file small.
+        alts = [a for a in alternates.split(",")
+                if a and len(a) <= 40 and fold(a).isascii() and a.lower() not in (name.lower(), ascii_name.lower())]
         rows.append((int(population or 0), "\t".join([
             gid, name, ascii_name, ",".join(alts[:MAX_ALTERNATES]), country,
             admin1.get(f"{country}.{admin1_code}", ""), lat, lng, timezone, population or "0",
