@@ -19,7 +19,7 @@ def fold(text: str) -> str:
     """Strip accents and lower-case, as app.places.fold does."""
     normalized = unicodedata.normalize("NFKD", text)
     return "".join(c for c in normalized if not unicodedata.combining(c)).casefold()
-MAX_ALTERNATES = 12
+MAX_ALTERNATES = 80
 
 
 def load_admin1(path: Path | None) -> dict[str, str]:
@@ -45,8 +45,12 @@ def main() -> None:
             continue
         # Keep short Latin-script alternates (accented ones included, so "München" is
         # found for "Munich"); other scripts are left out to keep the file small.
-        alts = [a for a in alternates.split(",")
-                if a and len(a) <= 40 and fold(a).isascii() and a.lower() not in (name.lower(), ascii_name.lower())]
+        alts, seen = [], {fold(name), fold(ascii_name)}
+        for alt in alternates.split(","):
+            key = fold(alt)
+            if alt and len(alt) <= 40 and key.isascii() and key not in seen:
+                seen.add(key)
+                alts.append(alt)
         rows.append((int(population or 0), "\t".join([
             gid, name, ascii_name, ",".join(alts[:MAX_ALTERNATES]), country,
             admin1.get(f"{country}.{admin1_code}", ""), lat, lng, timezone, population or "0",
