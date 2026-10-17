@@ -4,6 +4,7 @@ Reference: 12 June 1990, 14:40 local time, Berlin (52.52437 N, 13.41053 E). The
 positions were computed with Skyfield/JPL and compared with Swiss Ephemeris; both
 agree to well under an arcsecond, so they are quoted here to the arcminute.
 """
+import re
 from datetime import date
 from pathlib import Path
 
@@ -47,6 +48,18 @@ def test_summary_and_svg(berlin):
     assert berlin["svg"].lstrip().startswith("<?xml") or "<svg" in berlin["svg"][:300]
     assert "Berlin" in berlin["svg"]
     assert berlin["aspects"] and all(a["orb"] >= 0 for a in berlin["aspects"])
+
+
+def test_layouts_and_language():
+    wheel = build_chart(name="", birth_date=date(1990, 6, 12), hour=14, minute=40, language="de", **BERLIN)
+    full = build_chart(name="", birth_date=date(1990, 6, 12), hour=14, minute=40, layout="full", **BERLIN)
+    assert len(wheel["svg"]) < len(full["svg"])  # the wheel alone carries no side tables
+    assert "<svg" in wheel["svg"] and "<svg" in full["svg"]
+    # The wheel alone is square, so it scales well on a phone; the full chart is wide.
+    def ratio(svg):
+        x, y, w, h = (float(v) for v in re.search(r"viewBox='([^']*)'", svg).group(1).split())
+        return w / h
+    assert 0.9 < ratio(wheel["svg"]) < 1.1 and ratio(full["svg"]) > 1.3
 
 
 def test_unknown_birth_time():

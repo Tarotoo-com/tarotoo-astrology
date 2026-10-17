@@ -39,7 +39,9 @@ class ChartRequest(BaseModel):
     place_label: str = Field("", max_length=120)
     country: str = Field("", max_length=2)
     house_system: str = Field("placidus", pattern="^(placidus|whole_sign|koch|equal)$")
-    theme: str = Field("dark", pattern="^(dark|light|classic|black-and-white)$")
+    theme: str = Field("dark", pattern="^(dark|classic|black-and-white)$")
+    layout: str = Field("wheel", pattern="^(wheel|full)$")
+    language: str = Field("en", pattern="^(en|es|fr|it|de|pt)$")
 
     @field_validator("name", "place_label", mode="before")
     @classmethod
@@ -74,7 +76,7 @@ def chart(req: ChartRequest, format: str = Query("json", pattern="^(json|svg)$")
         result = build_chart(
             name=req.name, birth_date=req.date, hour=req.hour, minute=req.minute,
             lat=lat, lng=lng, tz=tz, place_label=label, country_code=country,
-            house_system=req.house_system, theme=req.theme,
+            house_system=req.house_system, theme=req.theme, layout=req.layout, language=req.language,
         )
     except ChartError as error:
         raise HTTPException(400, str(error))
