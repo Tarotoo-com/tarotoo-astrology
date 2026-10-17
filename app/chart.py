@@ -6,12 +6,17 @@ module only shapes the request and the response for the Tarotoo site.
 from __future__ import annotations
 
 import os
+import tempfile
 from datetime import date
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 # Keep the ephemeris offline and quiet: the bundled base tier covers 1850-2150.
 os.environ.setdefault("LIBEPHEMERIS_IERS_AUTO_DOWNLOAD", "false")
 os.environ.setdefault("LIBEPHEMERIS_LOG_LEVEL", "ERROR")
+# libephemeris creates a data folder in the home directory, which serverless platforms
+# mount read-only; fall back to the temp directory there.
+if "LIBEPHEMERIS_DATA_DIR" not in os.environ and not os.access(os.path.expanduser("~"), os.W_OK):
+    os.environ["LIBEPHEMERIS_DATA_DIR"] = os.path.join(tempfile.gettempdir(), "libephemeris")
 
 from kerykeion import AstrologicalSubjectFactory, ChartDataFactory, ChartDrawer  # noqa: E402
 

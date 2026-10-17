@@ -55,7 +55,7 @@ the default is `https://tarotoo.com`.
 python scripts/build_places.py cities15000.txt admin1CodesASCII.txt
 ```
 
-builds `data/places.tsv` from the GeoNames dumps (both files from
+builds `data/places.tsv.gz` from the GeoNames dumps (both files from
 <https://download.geonames.org/export/dump/>). Places without a time zone are skipped
 rather than guessed. The service starts without this file; `/places` then returns nothing.
 

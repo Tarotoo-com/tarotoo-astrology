@@ -5,11 +5,14 @@ dump: one city per line, tab-separated, sorted by population.
 """
 from __future__ import annotations
 
+import gzip
 import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 
-DATA_FILE = Path(__file__).resolve().parent.parent / "data" / "places.tsv"
+DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+# The compressed file is what the repo ships; a plain .tsv next to it is also accepted.
+DATA_FILE = DATA_DIR / "places.tsv.gz" if (DATA_DIR / "places.tsv.gz").exists() else DATA_DIR / "places.tsv"
 
 
 def fold(text: str) -> str:
@@ -49,7 +52,8 @@ class PlaceIndex:
         self.by_id: dict[int, Place] = {}
         if not path.exists():
             return
-        with path.open(encoding="utf-8") as handle:
+        opener = gzip.open if path.suffix == ".gz" else open
+        with opener(path, "rt", encoding="utf-8") as handle:
             for line in handle:
                 if not line.strip() or line.startswith("#"):
                     continue

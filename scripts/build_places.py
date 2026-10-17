@@ -8,11 +8,12 @@ Data: GeoNames, CC BY 4.0, https://download.geonames.org/export/dump/
 """
 from __future__ import annotations
 
+import gzip
 import sys
 import unicodedata
 from pathlib import Path
 
-OUT = Path(__file__).resolve().parent.parent / "data" / "places.tsv"
+OUT = Path(__file__).resolve().parent.parent / "data" / "places.tsv.gz"
 
 
 def fold(text: str) -> str:
@@ -57,7 +58,7 @@ def main() -> None:
         ])))
     rows.sort(key=lambda r: -r[0])
     OUT.parent.mkdir(exist_ok=True)
-    with OUT.open("w", encoding="utf-8") as out:
+    with gzip.open(OUT, "wt", encoding="utf-8") as out:
         out.write("# GeoNames extract, CC BY 4.0, https://download.geonames.org/export/dump/ ; built by scripts/build_places.py\n")
         for _, row in rows:
             out.write(row + "\n")
