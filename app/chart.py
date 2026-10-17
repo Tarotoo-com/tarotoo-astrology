@@ -33,6 +33,8 @@ SIGN_NAMES = {
     "Cap": "Capricorn", "Aqu": "Aquarius", "Pis": "Pisces",
 }
 HOUSE_SYSTEMS = {"placidus": "P", "whole_sign": "W", "koch": "K", "equal": "A"}
+# Site languages that Kerykeion can label the wheel in.
+CHART_LANGUAGES = {"en": "EN", "es": "ES", "fr": "FR", "it": "IT", "de": "DE", "pt": "PT"}
 # The bundled ephemeris tier. Dates outside it need a bigger data file.
 MIN_YEAR, MAX_YEAR = 1850, 2150
 
@@ -77,8 +79,14 @@ def build_chart(
     country_code: str,
     house_system: str = "placidus",
     theme: str = "dark",
+    layout: str = "wheel",
+    language: str = "en",
 ) -> dict:
-    """Return the chart as a dict: positions, houses, aspects, SVG and a text summary."""
+    """Return the chart as a dict: positions, houses, aspects, SVG and a text summary.
+
+    layout "wheel" gives the wheel alone (square, readable on a phone; the page shows its
+    own placements table); "full" gives Kerykeion's complete chart with its side tables.
+    """
     if not MIN_YEAR <= birth_date.year <= MAX_YEAR:
         raise ChartError(f"Birth years from {MIN_YEAR} to {MAX_YEAR} are supported.")
     try:
@@ -99,7 +107,9 @@ def build_chart(
         active_points=ACTIVE_POINTS,
     )
     chart_data = ChartDataFactory.create_natal_chart_data(subject)
-    svg = ChartDrawer(chart_data, theme=theme).generate_svg_string()
+    drawer = ChartDrawer(chart_data, theme=theme, chart_language=CHART_LANGUAGES.get(language, "EN"),
+                         transparent_background=True)
+    svg = drawer.generate_svg_string() if layout == "full" else drawer.generate_wheel_only_svg_string()
 
     data = subject.model_dump()
     planets = [_point(getattr(subject, key)) for key in PLANETS]
