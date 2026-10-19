@@ -13,8 +13,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel, Field, field_validator
 
-from .chart import ChartError, build_chart
 from .places import PlaceIndex
+
+# The chart module loads Kerykeion and its ephemeris, which takes a moment. It is
+# imported on the first chart request only, so a cold start for /health and the
+# birthplace search (the first calls a visitor's page makes) stays fast.
 
 app = FastAPI(title="Tarotoo astrology", version="0.1.0", docs_url=None, redoc_url=None)
 app.add_middleware(
@@ -72,6 +75,8 @@ def chart(req: ChartRequest, format: str = Query("json", pattern="^(json|svg)$")
         lat, lng, tz, label, country = req.lat, req.lng, req.timezone, req.place_label or "Birthplace", req.country or ""
     else:
         raise HTTPException(400, "Give a place_id, or lat, lng and timezone.")
+    from .chart import ChartError, build_chart
+
     try:
         result = build_chart(
             name=req.name, birth_date=req.date, hour=req.hour, minute=req.minute,
