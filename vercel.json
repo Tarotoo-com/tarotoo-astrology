@@ -1,15 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "functions": {
-    "api/index.py": {
-      "runtime": "python3.12",
-      "memory": 1024,
-      "maxDuration": 15
-    }
-  },
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/api/index" }
-  ],
   "headers": [
     { "source": "/(.*)", "headers": [ { "key": "Cache-Control", "value": "no-store" } ] }
   ]
