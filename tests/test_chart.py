@@ -65,6 +65,7 @@ def test_layouts_and_language():
     assert "Berlin, Germany" in full["svg"] and full["svg"].count("Germany") == 1
     assert "Geburtshoroskop · Anna" in full_de["svg"] and "Zwillinge" in full_de["svg"] and "Aspekte" in full_de["svg"]
     assert "kerykeion" not in (wheel["svg"] + full["svg"]).lower()
+    assert "Source: github.com/Tarotoo-com/tarotoo-astrology" in full["svg"]
 
 
 def test_unknown_birth_time():
