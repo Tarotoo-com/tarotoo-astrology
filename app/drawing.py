@@ -17,6 +17,7 @@ ASPECT_COLORS = {"trine": "#7fa8e0", "sextile": "#7fa8e0", "square": "#e58f6f", 
 TEXT_FONT = "Lexend, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
 GLYPH_FONT = "'Segoe UI Symbol', 'Noto Sans Symbols 2', 'Noto Sans Symbols', 'Apple Symbols', 'DejaVu Sans', sans-serif"
 TEXT_STYLE = "︎"  # show the glyph as a symbol, not as a coloured emoji
+SOURCE_URL = "github.com/Tarotoo-com/tarotoo-astrology"
 
 SIGNS = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"]
 SIGN_GLYPHS = "♈♉♊♋♌♍♎♏♐♑♒♓"
@@ -267,5 +268,7 @@ def full_svg(data: dict, language: str = "en") -> str:
     mo = data.get("modes") or {}
     bars(L["modes"], L["modeNames"], [int(mo.get(k + "_percentage", 0)) for k in ("cardinal", "fixed", "mutable")], [PURPLE, GOLD, MUTED])
     body.append(_t(width / 2, y + 6, "tarotoo.com", 13, MUTED))
-    height = y + 32
+    # The service is free software (AGPL, as Kerykeion): its source is offered here.
+    body.append(_t(width / 2, y + 26, f"Source: {SOURCE_URL}", 11, MUTED))
+    height = y + 52
     return _svg(width, height, [f'<rect width="{width}" height="{height:.0f}" fill="{BG}"/>'] + body, title)
