@@ -13,7 +13,7 @@ NASA JPL ephemerides through libephemeris. The bundled data covers birth years 1
 | Method | Path | Purpose |
 | --- | --- | --- |
 | `GET` | `/health` | Liveness check; also reports how many places are loaded |
-| `GET` | `/places?q=berl` | Birthplace search: name, region, country, coordinates, IANA time zone |
+| `POST` | `/places` | Birthplace search, body `{"q": "berl", "limit": 8}`: name, region, country, coordinates, IANA time zone, population, and whether the name matches exactly. The text goes in the body so it is not in request logs; `GET /places?q=berl` gives the same answer |
 | `POST` | `/chart` | Natal chart as JSON (add `?format=svg` for the SVG alone) |
 
 `POST /chart` body:
@@ -26,7 +26,8 @@ NASA JPL ephemerides through libephemeris. The bundled data covers birth years 1
   "minute": 40,
   "place_id": 2950159,
   "house_system": "placidus",
-  "theme": "dark"
+  "layout": "wheel",
+  "language": "en"
 }
 ```
 
@@ -35,8 +36,12 @@ houses and angles are not. Instead of `place_id` you can send `lat`, `lng` and `
 (an IANA name such as `Europe/Berlin`). Local time is converted to UTC with the historical
 rules of that zone, so a birth in 1990 gets 1990's offset, not today's.
 
-The response holds `planets`, `houses`, `angles`, `aspects`, `elements`, `summary` (text
-facts for the chat prompt) and `svg`.
+The response holds `planets`, `houses`, `angles`, `aspects`, `elements`, `modes`, `summary`
+(text facts for the chat prompt) and `svg`. The SVG is the service's own drawing
+(`app/drawing.py`) in the site's dark style, labelled in `language` (en, es, fr, it, de,
+pt): `layout` `wheel` is the square wheel alone, `full` one tall page with the wheel, the
+placements, the aspect grid and the balance of elements and modes. A birth time in the hour
+the clocks change is accepted; `input.time_note` says how it was read.
 
 
 ### Forecasts
