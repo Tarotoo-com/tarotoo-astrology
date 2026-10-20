@@ -43,7 +43,8 @@ class Place:
 
     def public(self) -> dict:
         return {"id": self.id, "name": self.name, "admin": self.admin, "country": self.country,
-                "label": self.label, "lat": self.lat, "lng": self.lng, "timezone": self.timezone}
+                "label": self.label, "lat": self.lat, "lng": self.lng, "timezone": self.timezone,
+                "population": self.population}
 
 
 class PlaceIndex:
