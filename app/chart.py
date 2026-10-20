@@ -19,6 +19,7 @@ if "LIBEPHEMERIS_DATA_DIR" not in os.environ and not os.access(os.path.expanduse
     os.environ["LIBEPHEMERIS_DATA_DIR"] = os.path.join(tempfile.gettempdir(), "libephemeris")
 
 from kerykeion import AstrologicalSubjectFactory, ChartDataFactory, ChartDrawer  # noqa: E402
+from kerykeion.schemas import KerykeionException  # noqa: E402
 
 # Bodies shown in the chart. Chiron and the asteroids are left out: they are not in
 # the bundled ephemeris and would fall back to an approximation.
@@ -40,12 +41,30 @@ SIGN_NAMES = {
 HOUSE_SYSTEMS = {"placidus": "P", "whole_sign": "W", "koch": "K", "equal": "A"}
 # Site languages that Kerykeion can label the wheel in.
 CHART_LANGUAGES = {"en": "EN", "es": "ES", "fr": "FR", "it": "IT", "de": "DE", "pt": "PT"}
-# The bundled ephemeris tier. Dates outside it need a bigger data file.
-MIN_YEAR, MAX_YEAR = 1850, 2150
+# The bundled ephemeris tier covers 1850-01-01 to 2150-01-01; whole years inside it.
+MIN_YEAR, MAX_YEAR = 1850, 2149
+ANGLES = ["Ascendant", "Medium_Coeli", "Descendant", "Imum_Coeli"]
+HOUSE_SYSTEM_NAMES = {"placidus": "Placidus", "whole_sign": "whole sign", "koch": "Koch", "equal": "equal"}
 
 
 class ChartError(ValueError):
     """A request that cannot be turned into a chart. The message is safe to show."""
+
+
+def birth_subject(**kwargs):
+    """Kerykeion's subject, also for a birth time in the hour the clocks change. A time
+    that happened twice (clocks back) is read as the first, summer-time occurrence; a time
+    that never happened (clocks forward) is read with the offset before the change, as
+    Python does. Returns (subject, note) where note is None, "ambiguous" or "nonexistent"."""
+    try:
+        return AstrologicalSubjectFactory.from_birth_data(**kwargs), None
+    except KerykeionException as error:
+        text = str(error)
+        if "Ambiguous time" in text:
+            return AstrologicalSubjectFactory.from_birth_data(**kwargs, is_dst=True), "ambiguous"
+        if "Non-existent time" in text:
+            return AstrologicalSubjectFactory.from_birth_data(**kwargs, is_dst=False), "nonexistent"
+        raise ChartError("The chart could not be calculated for this birth data.") from error
 
 
 def _dms(position: float) -> str:
@@ -102,14 +121,16 @@ def build_chart(
         raise ChartError("Unknown house system.")
 
     time_known = hour is not None and minute is not None
-    subject = AstrologicalSubjectFactory.from_birth_data(
+    # Without a birth time the angles of a noon chart mean nothing, so they are left out
+    # of the points (and so of the aspects).
+    subject, time_note = birth_subject(
         name=name or "Birth chart",
         year=birth_date.year, month=birth_date.month, day=birth_date.day,
         hour=hour if time_known else 12, minute=minute if time_known else 0,
-        city=place_label, nation=country_code,
+        city=place_label or "Birthplace", nation=country_code or "",
         lng=lng, lat=lat, tz_str=tz, online=False,
         houses_system_identifier=HOUSE_SYSTEMS[house_system],
-        active_points=ACTIVE_POINTS,
+        active_points=ACTIVE_POINTS if time_known else [p for p in ACTIVE_POINTS if p not in ANGLES],
     )
     chart_data = ChartDataFactory.create_natal_chart_data(subject)
     drawer = ChartDrawer(chart_data, theme=theme, chart_language=CHART_LANGUAGES.get(language, "EN"),
@@ -129,14 +150,17 @@ def build_chart(
         "descendant": _point(subject.descendant),
         "imum_coeli": _point(subject.imum_coeli),
     }
-    aspects = [
+    aspects = sorted((
         {"from": a.p1_name, "to": a.p2_name, "type": a.aspect, "orb": round(a.orbit, 2)}
         for a in chart_data.aspects
-    ]
+        if time_known or (a.p1_name not in ANGLES and a.p2_name not in ANGLES)
+    ), key=lambda a: abs(a["orb"]))
     if not time_known:
         # Without a birth time the houses and angles are unknown; the Moon moves
         # about 13 degrees a day, so its sign may differ at the true time.
         houses, angles = [], None
+        for p in planets:
+            p["house"] = None
 
     return {
         "input": {
@@ -147,6 +171,8 @@ def build_chart(
             "utc": subject.iso_formatted_utc_datetime,
             "house_system": house_system if time_known else None,
             "zodiac": "tropical",
+            # Set when the birth time fell in the hour the clocks changed (see birth_subject).
+            "time_note": time_note,
         },
         "planets": planets,
         "houses": houses,
@@ -155,7 +181,7 @@ def build_chart(
         "elements": {k: round(v, 1) for k, v in chart_data.element_distribution.model_dump().items()
                      if isinstance(v, (int, float))},
         "lunar_phase": data.get("lunar_phase", {}).get("moon_phase_name") if data.get("lunar_phase") else None,
-        "summary": summary_text(planets, angles, aspects, time_known),
+        "summary": summary_text(planets, angles, aspects, time_known, house_system, time_note),
         "svg": svg,
     }
 
@@ -181,10 +207,15 @@ def house_label(house: str | None) -> str:
     return f"{HOUSE_ORDINALS.get(word, word)} house"
 
 
-def summary_text(planets: list[dict], angles: dict | None, aspects: list[dict], time_known: bool) -> str:
+def summary_text(planets: list[dict], angles: dict | None, aspects: list[dict], time_known: bool,
+                 house_system: str = "placidus", time_note: str | None = None) -> str:
     """Plain-text chart facts for the Spiritual Chat prompt. No interpretation here."""
-    lines = ["Birth chart (tropical zodiac, Placidus houses):" if time_known
+    lines = [f"Birth chart (tropical zodiac, {HOUSE_SYSTEM_NAMES.get(house_system, house_system)} houses):" if time_known
              else "Birth chart (tropical zodiac; birth time unknown, so houses and the Ascendant are not available):"]
+    if time_note == "ambiguous":
+        lines.append("- Note: the birth time happened twice that night (clocks went back); the first occurrence was used")
+    elif time_note == "nonexistent":
+        lines.append("- Note: the clocks skipped the birth time that night; it was read with the time zone offset before the change")
     for p in planets:
         if p["name"] == "Mean_South_Lunar_Node":
             continue

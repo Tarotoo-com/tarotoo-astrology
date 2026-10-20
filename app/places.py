@@ -32,6 +32,7 @@ class Place:
     timezone: str
     population: int
     keys: tuple[str, ...]  # folded name variants used for matching
+    main_keys: tuple[str, ...] = ()  # the folded name and ASCII name only
 
     @property
     def label(self) -> str:
@@ -59,10 +60,11 @@ class PlaceIndex:
                 if not line.strip() or line.startswith("#"):
                     continue
                 gid, name, ascii_name, alternates, country, admin, lat, lng, tz, pop = line.rstrip("\n").split("\t")
-                keys = {fold(name), fold(ascii_name)}
+                main = {fold(name), fold(ascii_name)}
+                keys = set(main)
                 keys.update(fold(a) for a in alternates.split(",") if a)
                 place = Place(int(gid), name, admin, country, float(lat), float(lng), tz, int(pop),
-                              tuple(k for k in keys if k))
+                              tuple(k for k in keys if k), tuple(k for k in main if k))
                 self.places.append(place)
                 self.by_id[place.id] = place
         # Population order means the best-known city of a name comes first.
@@ -72,20 +74,31 @@ class PlaceIndex:
         return [place for place, _ in self.search_ranked(query, limit)]
 
     def search_ranked(self, query: str, limit: int = 8) -> list[tuple[Place, bool]]:
-        """Places whose name or one of its other names (Roma, München) equals the query
-        come first, flagged True; then places with a name starting with it."""
+        """Places named exactly as typed come first, flagged True. A place whose other name
+        (Roma for Rome, München) is the query is flagged too, but only when it is bigger than
+        every place with that main name, so a small town known locally as "Berlin" does not
+        rank as Berlin. Then the other matches and the names starting with the query, by
+        population. Queries of up to three letters match main names only."""
         q = fold(query)
         if len(q) < 2:
             return []
-        exact, prefix = [], []
+        short = len(q) <= 3
+        main, other, prefix = [], [], []
         for place in self.places:
-            if any(k == q for k in place.keys):
-                exact.append(place)
-            elif any(k.startswith(q) for k in place.keys):
+            keys = place.main_keys if short else place.keys
+            if q in place.main_keys:
+                main.append(place)
+            elif q in keys:
+                other.append(place)
+            elif any(k.startswith(q) for k in keys):
                 prefix.append(place)
-            if len(exact) >= limit:
+            if len(main) >= limit:
                 break
-        return ([(p, True) for p in exact] + [(p, False) for p in prefix])[:limit]
+        biggest = max((p.population for p in main), default=-1)
+        other_exact = [p for p in other if p.population > biggest]
+        exact = sorted(main + other_exact, key=lambda p: -p.population)
+        rest = [p for p in other if p not in other_exact] + prefix
+        return ([(p, True) for p in exact] + [(p, False) for p in rest])[:limit]
 
     def get(self, place_id: int) -> Place | None:
         return self.by_id.get(place_id)

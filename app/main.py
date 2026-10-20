@@ -5,13 +5,15 @@ The WordPress site calls this over HTTP; it holds no user data and keeps no stat
 """
 from __future__ import annotations
 
+import logging
 import os
 from datetime import date
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field, field_validator
 
 from .places import PlaceIndex
@@ -23,11 +25,36 @@ from .places import PlaceIndex
 app = FastAPI(title="Tarotoo astrology", version="0.1.0", docs_url=None, redoc_url=None)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[o for o in os.environ.get("ALLOWED_ORIGINS", "https://tarotoo.com").split(",") if o],
+    allow_origins=[o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "https://tarotoo.com").split(",") if o.strip()],
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type"],
 )
 places = PlaceIndex()
+
+
+@app.exception_handler(RequestValidationError)
+async def invalid_request(request: Request, error: RequestValidationError):
+    """422 with where and what, without echoing the values sent (a NaN would not fit in JSON)."""
+    return JSONResponse({"detail": [{"loc": list(e.get("loc", [])), "msg": e.get("msg", ""), "type": e.get("type", "")}
+                                    for e in error.errors()]}, status_code=422)
+
+
+@app.exception_handler(Exception)
+async def calculation_error(request: Request, error: Exception):
+    """Kerykeion refusing a calculation (a date at the edge of the ephemeris, for example)
+    is a bad request, not a server fault. Anything else stays a 500."""
+    if type(error).__name__ == "KerykeionException":
+        return JSONResponse({"detail": "The chart could not be calculated for this birth data."}, status_code=400)
+    logging.getLogger("tarotoo").exception("Unhandled error on %s", request.url.path)
+    return JSONResponse({"detail": "Internal error."}, status_code=500)
+
+
+def valid_zone(name: str) -> bool:
+    try:
+        ZoneInfo(name)
+        return True
+    except (ZoneInfoNotFoundError, ValueError):
+        return False
 
 
 class BirthData(BaseModel):
@@ -37,8 +64,8 @@ class BirthData(BaseModel):
     minute: int | None = Field(None, ge=0, le=59)
     place_id: int | None = None
     # Coordinates and time zone may be given directly instead of a place id.
-    lat: float | None = Field(None, ge=-90, le=90)
-    lng: float | None = Field(None, ge=-180, le=180)
+    lat: float | None = Field(None, ge=-90, le=90, allow_inf_nan=False)
+    lng: float | None = Field(None, ge=-180, le=180, allow_inf_nan=False)
     timezone: str | None = Field(None, max_length=64)
     place_label: str = Field("", max_length=120)
     country: str = Field("", max_length=2)
@@ -88,13 +115,15 @@ def resolve_birth(req: BirthData) -> dict:
         lat, lng, tz, label, country = req.lat, req.lng, req.timezone, req.place_label or "Birthplace", req.country or ""
     else:
         raise HTTPException(400, "Give a place_id, or lat, lng and timezone.")
+    if not valid_zone(tz):
+        raise HTTPException(400, "Unknown time zone for the birthplace.")
     return {"date": req.date, "hour": req.hour, "minute": req.minute, "lat": lat, "lng": lng, "tz": tz,
             "place_label": label, "country_code": country}
 
 
 @app.get("/health")
 def health():
-    return {"ok": True, "places": len(places.places)}
+    return {"ok": bool(places.places), "places": len(places.places)}
 
 
 @app.get("/places")
@@ -130,11 +159,10 @@ def horoscope(req: HoroscopeRequest):
     tz = req.visitor_timezone or b["tz"]
     if abs((req.today - date.today()).days) > 2:
         raise HTTPException(400, "The visitor's date is too far from today.")
-    try:
-        ZoneInfo(tz)
-        return build(b, req.period, req.today, tz)
-    except ZoneInfoNotFoundError:
+    if not valid_zone(tz):
         raise HTTPException(400, "Unknown time zone.")
+    try:
+        return build(b, req.period, req.today, tz)
     except ChartError as error:
         raise HTTPException(400, str(error))
 
@@ -153,7 +181,7 @@ def synastry(req: SynastryRequest):
 
 
 @app.get("/moon-calendar")
-def moon_calendar(year: int = Query(..., ge=1850, le=2150), month: int = Query(..., ge=1, le=12), tz: str = Query("UTC", max_length=64)):
+def moon_calendar(year: int = Query(..., ge=1850, le=2149), month: int = Query(..., ge=1, le=12), tz: str = Query("UTC", max_length=64)):
     """Each day's Moon phase, illumination and sign, and the exact times of the major phases."""
     from .chart import ChartError
     from .forecast import moon_calendar as build
