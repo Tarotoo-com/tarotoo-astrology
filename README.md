@@ -6,7 +6,7 @@ the site's Spiritual Chat uses as context. It also offers a birthplace search ov
 bundled city list, so no third-party API is involved at any step.
 
 The astronomy comes from [Kerykeion](https://github.com/g-battaglia/kerykeion), which uses
-NASA JPL ephemerides through libephemeris. The bundled data covers birth years 1850 to 2150.
+NASA JPL ephemerides through libephemeris. The bundled data covers birth years 1850 to 2149 (Moon calendar months February 1850 to December 2149).
 
 ## Endpoints
 
