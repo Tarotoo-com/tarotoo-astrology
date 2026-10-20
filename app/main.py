@@ -99,7 +99,7 @@ def health():
 
 @app.get("/places")
 def search_places(q: str = Query(..., min_length=2, max_length=60), limit: int = Query(8, ge=1, le=15)):
-    return {"places": [p.public() for p in places.search(q, limit)]}
+    return {"places": [dict(p.public(), exact=is_exact) for p, is_exact in places.search_ranked(q, limit)]}
 
 
 @app.post("/chart")

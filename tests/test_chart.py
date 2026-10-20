@@ -129,3 +129,12 @@ def test_places_carry_population_for_choosing_the_well_known_city():
     found = TestClient(app).get("/places", params={"q": "madrid"}).json()["places"]
     exact = [p for p in found if p["name"] == "Madrid"]
     assert exact[0]["country"] == "ES" and exact[0]["population"] > 10 * exact[1]["population"]
+
+
+def test_places_flag_exact_matches_on_other_names():
+    from fastapi.testclient import TestClient
+    from app.main import app
+    found = TestClient(app).get("/places", params={"q": "roma"}).json()["places"]
+    rome = found[0]
+    assert rome["name"] == "Rome" and rome["country"] == "IT" and rome["exact"] is True
+    assert any(not p["exact"] for p in found)  # prefix matches such as La Romana
