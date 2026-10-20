@@ -69,6 +69,11 @@ class PlaceIndex:
         self.places.sort(key=lambda p: -p.population)
 
     def search(self, query: str, limit: int = 8) -> list[Place]:
+        return [place for place, _ in self.search_ranked(query, limit)]
+
+    def search_ranked(self, query: str, limit: int = 8) -> list[tuple[Place, bool]]:
+        """Places whose name or one of its other names (Roma, München) equals the query
+        come first, flagged True; then places with a name starting with it."""
         q = fold(query)
         if len(q) < 2:
             return []
@@ -80,7 +85,7 @@ class PlaceIndex:
                 prefix.append(place)
             if len(exact) >= limit:
                 break
-        return (exact + prefix)[:limit]
+        return ([(p, True) for p in exact] + [(p, False) for p in prefix])[:limit]
 
     def get(self, place_id: int) -> Place | None:
         return self.by_id.get(place_id)
