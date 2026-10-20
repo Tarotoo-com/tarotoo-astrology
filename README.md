@@ -38,6 +38,17 @@ rules of that zone, so a birth in 1990 gets 1990's offset, not today's.
 The response holds `planets`, `houses`, `angles`, `aspects`, `elements`, `summary` (text
 facts for the chat prompt) and `svg`.
 
+
+### Forecasts
+
+| Endpoint | What it returns |
+| --- | --- |
+| `POST /horoscope` | Transits to a birth chart for `period` `tomorrow`, `week` (7 days from `today`) or `month` (the calendar month of `today`): the most important major aspects with their exact moments (or "in effect from the start", "building, exact after this period"), the Moon's signs for a day or a week, and a text summary |
+| `POST /synastry` | Two people (`people`: birth data and an optional `name` each): Kerykeion's relationship score and description, Sun, Moon, Venus and Mars signs, the closest aspects between the charts (pairs of two outer planets left out) and a text summary |
+| `GET /moon-calendar?year=&month=&tz=` | Each day's Moon phase, illumination and sign at local noon, and the exact times of the new, first quarter, full and last quarter Moon in that month |
+
+Birth data is the same as for `/chart`: `date`, `hour` and `minute` (or neither), and a `place_id` or `lat`, `lng` and `timezone`.
+
 ## Run it
 
 ```bash
