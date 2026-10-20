@@ -46,20 +46,25 @@ def test_angles_and_time_zone(berlin):
 def test_summary_and_svg(berlin):
     assert "Sun: Gemini 21°17′" in berlin["summary"] and "Ascendant: Libra 9°44′" in berlin["summary"]
     assert berlin["svg"].lstrip().startswith("<?xml") or "<svg" in berlin["svg"][:300]
-    assert "Berlin" in berlin["svg"]
+    assert "kerykeion" not in berlin["svg"].lower()  # Tarotoo's own drawing
     assert berlin["aspects"] and all(a["orb"] >= 0 for a in berlin["aspects"])
 
 
 def test_layouts_and_language():
     wheel = build_chart(name="", birth_date=date(1990, 6, 12), hour=14, minute=40, language="de", **BERLIN)
     full = build_chart(name="", birth_date=date(1990, 6, 12), hour=14, minute=40, layout="full", **BERLIN)
+    full_de = build_chart(name="Anna", birth_date=date(1990, 6, 12), hour=14, minute=40, layout="full", language="de", **BERLIN)
     assert len(wheel["svg"]) < len(full["svg"])  # the wheel alone carries no side tables
     assert "<svg" in wheel["svg"] and "<svg" in full["svg"]
-    # The wheel alone is square, so it scales well on a phone; the full chart is wide.
+    # The wheel alone is square for the chat; the full chart is one tall page for a phone.
     def ratio(svg):
-        x, y, w, h = (float(v) for v in re.search(r"viewBox='([^']*)'", svg).group(1).split())
+        x, y, w, h = (float(v) for v in re.search(r'viewBox="([^"]*)"', svg).group(1).split())
         return w / h
-    assert 0.9 < ratio(wheel["svg"]) < 1.1 and ratio(full["svg"]) > 1.3
+    assert 0.9 < ratio(wheel["svg"]) < 1.1 and ratio(full["svg"]) < 0.5
+    assert "<title>Birth chart</title>" in full["svg"] and "Birth Chart" not in full["svg"]
+    assert "Berlin, Germany" in full["svg"] and full["svg"].count("Germany") == 1
+    assert "Geburtshoroskop · Anna" in full_de["svg"] and "Zwillinge" in full_de["svg"] and "Aspekte" in full_de["svg"]
+    assert "kerykeion" not in (wheel["svg"] + full["svg"]).lower()
 
 
 def test_unknown_birth_time():

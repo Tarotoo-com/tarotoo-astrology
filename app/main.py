@@ -126,9 +126,26 @@ def health():
     return {"ok": bool(places.places), "places": len(places.places)}
 
 
+class PlaceSearch(BaseModel):
+    q: str = Field(..., min_length=2, max_length=60)
+    limit: int = Field(8, ge=1, le=15)
+
+
+def _search(q: str, limit: int) -> dict:
+    return {"places": [dict(p.public(), exact=is_exact) for p, is_exact in places.search_ranked(q, limit)]}
+
+
+@app.post("/places")
+def search_places_post(req: PlaceSearch):
+    """The birthplace search with the text in the request body, so what a visitor types
+    does not appear in request logs (which keep the address and its query string)."""
+    return _search(req.q, req.limit)
+
+
 @app.get("/places")
 def search_places(q: str = Query(..., min_length=2, max_length=60), limit: int = Query(8, ge=1, le=15)):
-    return {"places": [dict(p.public(), exact=is_exact) for p, is_exact in places.search_ranked(q, limit)]}
+    """Kept for pages cached from an earlier release of the site's plugin."""
+    return _search(q, limit)
 
 
 @app.post("/chart")

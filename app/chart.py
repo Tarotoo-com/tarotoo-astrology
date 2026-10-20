@@ -18,7 +18,7 @@ os.environ.setdefault("LIBEPHEMERIS_LOG_LEVEL", "ERROR")
 if "LIBEPHEMERIS_DATA_DIR" not in os.environ and not os.access(os.path.expanduser("~"), os.W_OK):
     os.environ["LIBEPHEMERIS_DATA_DIR"] = os.path.join(tempfile.gettempdir(), "libephemeris")
 
-from kerykeion import AstrologicalSubjectFactory, ChartDataFactory, ChartDrawer  # noqa: E402
+from kerykeion import AstrologicalSubjectFactory, ChartDataFactory  # noqa: E402
 from kerykeion.schemas import KerykeionException  # noqa: E402
 
 # Bodies shown in the chart. Chiron and the asteroids are left out: they are not in
@@ -109,7 +109,9 @@ def build_chart(
     """Return the chart as a dict: positions, houses, aspects, SVG and a text summary.
 
     layout "wheel" gives the wheel alone (square, readable on a phone; the page shows its
-    own placements table); "full" gives Kerykeion's complete chart with its side tables.
+    own placements table); "full" gives the complete chart: the wheel, the placements, the
+    aspect grid and the balance of elements and modes. Both are Tarotoo's own drawing
+    (drawing.py) in the site's dark style; theme is kept for the API but not used.
     """
     if not MIN_YEAR <= birth_date.year <= MAX_YEAR:
         raise ChartError(f"Birth years from {MIN_YEAR} to {MAX_YEAR} are supported.")
@@ -133,14 +135,11 @@ def build_chart(
         active_points=ACTIVE_POINTS if time_known else [p for p in ACTIVE_POINTS if p not in ANGLES],
     )
     chart_data = ChartDataFactory.create_natal_chart_data(subject)
-    drawer = ChartDrawer(chart_data, theme=theme, chart_language=CHART_LANGUAGES.get(language, "EN"),
-                         transparent_background=True)
-    svg = drawer.generate_svg_string() if layout == "full" else drawer.generate_wheel_only_svg_string()
 
     data = subject.model_dump()
     planets = [_point(getattr(subject, key)) for key in PLANETS]
     houses = [
-        {"house": i + 1, "sign": SIGN_NAMES[data[key]["sign"]],
+        {"house": i + 1, "sign": SIGN_NAMES[data[key]["sign"]], "longitude": round(data[key]["abs_pos"], 4),
          "position": round(data[key]["position"], 4), "position_text": _dms(data[key]["position"])}
         for i, key in enumerate(HOUSES)
     ]
@@ -162,7 +161,7 @@ def build_chart(
         for p in planets:
             p["house"] = None
 
-    return {
+    result = {
         "input": {
             "name": name, "date": birth_date.isoformat(),
             "time": f"{hour:02d}:{minute:02d}" if time_known else None,
@@ -180,10 +179,14 @@ def build_chart(
         "aspects": aspects,
         "elements": {k: round(v, 1) for k, v in chart_data.element_distribution.model_dump().items()
                      if isinstance(v, (int, float))},
+        "modes": {k: round(v, 1) for k, v in chart_data.quality_distribution.model_dump().items()
+                  if isinstance(v, (int, float))},
         "lunar_phase": data.get("lunar_phase", {}).get("moon_phase_name") if data.get("lunar_phase") else None,
         "summary": summary_text(planets, angles, aspects, time_known, house_system, time_note),
-        "svg": svg,
     }
+    from .drawing import full_svg, wheel_svg
+    result["svg"] = full_svg(result, language) if layout == "full" else wheel_svg(result, language)
+    return result
 
 
 DISPLAY_NAMES = {

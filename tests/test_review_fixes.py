@@ -140,3 +140,10 @@ def test_alternate_names_do_not_outrank_real_ones():
 
 def test_health_reports_places():
     assert client.get("/health").json() == {"ok": True, "places": client.get("/health").json()["places"]}
+
+
+def test_place_search_in_the_request_body():
+    r = client.post("/places", json={"q": "Madrid", "limit": 3})
+    assert r.status_code == 200 and r.json()["places"][0]["name"] == "Madrid"
+    assert client.post("/places", json={"q": "M"}).status_code == 422
+    assert client.get("/places", params={"q": "Madrid"}).json() == client.post("/places", json={"q": "Madrid", "limit": 8}).json()
