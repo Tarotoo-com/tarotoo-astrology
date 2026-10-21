@@ -197,6 +197,53 @@ def synastry(req: SynastryRequest):
         raise HTTPException(400, str(error))
 
 
+class HumanDesignRequest(BirthData):
+    name: str = Field("", max_length=40)
+
+
+class HumanDesignPair(BaseModel):
+    people: list[HumanDesignRequest] = Field(..., min_length=2, max_length=2)
+
+
+@app.post("/human-design")
+def human_design_chart(req: HumanDesignRequest):
+    """Human Design chart: type, strategy, authority, profile, definition, incarnation
+    cross, centers, channels, the 26 activations, a bodygraph SVG and a text summary.
+    The birth time is required."""
+    from .chart import ChartError
+    from .humandesign import bodygraph_svg, human_design
+
+    b = resolve_birth(req)
+    try:
+        r = human_design(b, clean_text(req.name))
+    except ChartError as error:
+        raise HTTPException(400, str(error))
+    r["svg"] = bodygraph_svg(r)
+    return r
+
+
+@app.post("/human-design/compatibility")
+def human_design_pair(req: HumanDesignPair):
+    """Two Human Design charts: electromagnetic, companionship and dominance channels and
+    the composite chart."""
+    from .chart import ChartError
+    from .humandesign import compatibility, human_design
+
+    try:
+        charts = [human_design(resolve_birth(p), clean_text(p.name)) for p in req.people]
+    except ChartError as error:
+        raise HTTPException(400, str(error))
+    r = compatibility(charts[0], charts[1])
+    r["people"] = [{k: c[k] for k in ("name", "type", "profile", "authority", "strategy", "defined_centers", "channels")} for c in charts]
+    return r
+
+
+def clean_text(value: str) -> str:
+    """A name on one line, for summaries that go to the chat."""
+    import re
+    return re.sub(r"\s+", " ", re.sub(r"[\x00-\x1f\x7f]", " ", value or "")).strip()
+
+
 @app.get("/moon-calendar")
 def moon_calendar(year: int = Query(..., ge=1850, le=2149), month: int = Query(..., ge=1, le=12), tz: str = Query("UTC", max_length=64)):
     """Each day's Moon phase, illumination and sign, and the exact times of the major phases."""
