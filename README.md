@@ -44,6 +44,17 @@ placements, the aspect grid and the balance of elements and modes. A birth time 
 the clocks change is accepted; `input.time_note` says how it was read.
 
 
+### Human Design
+
+| Endpoint | What it returns |
+| --- | --- |
+| `POST /human-design` | Birth data (time required) and an optional `name`: type, strategy, signature and not-self theme, inner authority, profile, definition, incarnation cross (angle and the four gates), defined centers and channels, the 13 Personality and 13 Design activations (gate and line), a bodygraph SVG in the site's dark style and a text summary |
+| `POST /human-design/compatibility` | Two people (`people`): electromagnetic channels (formed only together), companionship and dominance channels, the composite chart and a text summary |
+
+The Personality is the sky at birth, the Design the sky when the Sun stood 88 degrees of
+longitude earlier; the true lunar nodes are used. Gates follow the Rave mandala from gate 25
+at 28°15' Pisces (`app/humandesign.py`).
+
 ### Forecasts
 
 | Endpoint | What it returns |
