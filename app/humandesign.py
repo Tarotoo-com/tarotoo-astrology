@@ -252,7 +252,11 @@ def _shape(center: str, fill: str, stroke: str) -> str:
     return '<polygon points="' + " ".join(f"{px:.0f},{py:.0f}" for px, py in points) + f'" fill="{fill}" stroke="{stroke}" stroke-width="2"/>'
 
 
-def bodygraph_svg(r: dict, title: str = "Human Design") -> str:
+LEGEND = {"en": ("Personality", "Design"), "es": ("Personalidad", "Diseño"), "fr": ("Personnalité", "Design"),
+          "it": ("Personalità", "Design"), "de": ("Persönlichkeit", "Design"), "pt": ("Personalidade", "Design")}
+
+
+def bodygraph_svg(r: dict, title: str = "Human Design", language: str = "en") -> str:
     """The nine centers, every channel as a faint line, defined channels in the colour of
     the side that activates them (light: Personality, orange: Design, both side by side)."""
     by_gate: dict[int, set[str]] = {}
@@ -285,10 +289,11 @@ def bodygraph_svg(r: dict, title: str = "Human Design") -> str:
             lines.append(f'<line {seg} stroke="{LINE}" stroke-width="3" stroke-linecap="round"/>')
     shapes = [_shape(c, CENTER_COLORS[c] if c in r["defined_centers"] else BG, CENTER_COLORS[c] if c in r["defined_centers"] else "#a689d2")
               for c in LAYOUT]
+    conscious, unconscious = LEGEND.get(language, LEGEND["en"])
     legend = (f'<rect x="20" y="540" width="14" height="6" rx="3" fill="{PERSONALITY}"/>'
-              f'<text x="40" y="546" font-family="Lexend, Helvetica, Arial, sans-serif" font-size="11" fill="{TEXT}">Personality</text>'
+              f'<text x="40" y="546" font-family="Lexend, Helvetica, Arial, sans-serif" font-size="11" fill="{TEXT}">{conscious}</text>'
               f'<rect x="200" y="540" width="14" height="6" rx="3" fill="{DESIGN}"/>'
-              f'<text x="220" y="546" font-family="Lexend, Helvetica, Arial, sans-serif" font-size="11" fill="{TEXT}">Design</text>')
+              f'<text x="220" y="546" font-family="Lexend, Helvetica, Arial, sans-serif" font-size="11" fill="{TEXT}">{unconscious}</text>')
     return ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 560" width="320" height="560">'
             f'<title>{title}</title><rect width="320" height="560" rx="16" fill="{BG}"/>'
             + "".join(lines) + "".join(shapes) + legend + "</svg>")

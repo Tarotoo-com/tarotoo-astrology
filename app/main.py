@@ -199,6 +199,7 @@ def synastry(req: SynastryRequest):
 
 class HumanDesignRequest(BirthData):
     name: str = Field("", max_length=40)
+    language: str = Field("en", pattern="^(en|es|fr|it|de|pt)$")
 
 
 class HumanDesignPair(BaseModel):
@@ -218,7 +219,7 @@ def human_design_chart(req: HumanDesignRequest):
         r = human_design(b, clean_text(req.name))
     except ChartError as error:
         raise HTTPException(400, str(error))
-    r["svg"] = bodygraph_svg(r)
+    r["svg"] = bodygraph_svg(r, language=req.language)
     return r
 
 

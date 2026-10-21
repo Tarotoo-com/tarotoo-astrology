@@ -57,6 +57,11 @@ def test_api_chart():
     assert d["summary"].startswith("Human Design chart") and "<svg" in d["svg"] and "Personality" in d["svg"]
 
 
+def test_bodygraph_legend_in_the_page_language():
+    r = client.post("/human-design", json={"date": "1990-06-12", "hour": 14, "minute": 40, "place_id": BERLIN, "language": "de"})
+    assert "Persönlichkeit" in r.json()["svg"] and "Personality" not in r.json()["svg"]
+
+
 def test_api_needs_the_birth_time():
     r = client.post("/human-design", json={"date": "1990-06-12", "place_id": BERLIN})
     assert r.status_code == 400 and "birth time" in r.json()["detail"]
