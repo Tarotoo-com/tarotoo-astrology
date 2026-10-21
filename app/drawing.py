@@ -164,8 +164,11 @@ def wheel_svg_parts(data: dict, cx: float, cy: float, r: float) -> list[str]:
     return parts
 
 
-def _svg(width: float, height: float, body: list[str], title: str) -> str:
-    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width:.0f} {height:.0f}" width="{width:.0f}" height="{height:.0f}">'
+def _svg(width: float, height: float, body: list[str], title: str, fit: bool = False) -> str:
+    # fit: opened on its own in a browser tab, the drawing takes the window's width (a phone
+    # shows it whole and can zoom in) instead of its fixed size.
+    size = 'width="100%"' if fit else f'width="{width:.0f}" height="{height:.0f}"'
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width:.0f} {height:.0f}" {size} style="background:{BG}">'
             f'<title>{escape(title)}</title>' + "".join(body) + "</svg>")
 
 
@@ -271,4 +274,4 @@ def full_svg(data: dict, language: str = "en") -> str:
     # The service is free software (AGPL, as Kerykeion): its source is offered here.
     body.append(_t(width / 2, y + 26, f"Source: {SOURCE_URL}", 11, MUTED))
     height = y + 52
-    return _svg(width, height, [f'<rect width="{width}" height="{height:.0f}" fill="{BG}"/>'] + body, title)
+    return _svg(width, height, [f'<rect width="{width}" height="{height:.0f}" fill="{BG}"/>'] + body, title, fit=True)
