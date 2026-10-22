@@ -1,8 +1,8 @@
 # Tarotoo astrology service
 
-A small HTTP service that calculates natal (birth) charts for Tarotoo [tarotoo.com](https://tarotoo.com).
+A small HTTP service that calculates natal (birth) charts for Tarotoo ([tarotoo.com](https://tarotoo.com)).
 It returns planet positions, houses, aspects, an SVG wheel and a plain-text summary that
-the site's Spiritual Chat [tarotoo.com/psychic](https://tarotoo.com/psychic) uses as context. It also offers a birthplace search over a
+the site's Spiritual Chat ([tarotoo.com/psychic](https://tarotoo.com/psychic)) uses as context. It also offers a birthplace search over a
 bundled city list, so no third-party API is involved at any step.
 
 The astronomy comes from [Kerykeion](https://github.com/g-battaglia/kerykeion), which uses
